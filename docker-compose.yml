@@ -10,3 +10,39 @@ services:
     volumes:
       - /home/corentin/vpnaas/config/openvpn:/etc/openvpn
       - /dev/net/tun:/dev/net/tun
+  openldap:
+    image: osixia/openldap:1.2.3
+    container_name: openldap
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Example Inc."
+      LDAP_DOMAIN: "testldap"
+      LDAP_BASE_DN: "dc=testldap"
+      LDAP_ADMIN_PASSWORD: "admin"
+      LDAP_CONFIG_PASSWORD: "config"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "false"
+    tty: true
+    stdin_open: true
+    expose:
+      - "389"
+      - "636"
+    ports:
+      - "389:389"
+      - "636:636"
+    domainname: "testldap" # important: same as hostname
+    hostname: "testldap"
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8080:80"
+    depends_on:
+      - openldap

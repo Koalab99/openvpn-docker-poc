@@ -7,6 +7,28 @@ GEN_SERVER_CONF=y
 GEN_CLIENT_CONF=y
 VPN_IP="127.0.0.1"
 
+# Bind user to LDAP
+# uid=Manager,ou=People,dc=example,dc=com
+BIND_DN="cn=readonly,dc=testldap"
+# Password for the bind user
+# SecretPassword
+BIND_PASSWORD="readonly"
+# Location to find users
+# "ou=People,dc=example,dc=com"
+BASE_DN="dc=testldap"
+# Filter to search for users
+# "(&(uid=%u)(accountStatus=active))"
+SEARCH_FILTER="(uid=%u)"
+# Where are groups
+# "ou=Groups,dc=example,dc=com"
+GROUP_DN="dc=testldap"
+# What groups are allowed to connect
+# "(|(cn=developers)(cn=artists))"
+GROUP_FILTER="(cn=vpn)"
+# What is the member field
+# "uniqueMember"
+MEMBER_ATTR="memberUid"
+
 if [[ "$BUILD_PKI" == "y" ]]
 then
     # Create PKI and CA
@@ -35,6 +57,19 @@ then
     cp pki/private/server0.key config/openvpn
     cp pki/dh.pem config/openvpn/dh2048.pem
     cp pki/ta.key config/openvpn
+
+    LDAP_CONF="config/openvpn/auth-ldap.conf"
+    cp template/auth-ldap.conf config/openvpn/auth-ldap.conf
+
+    # Template le fichier
+    sed -i "s/<BIND_DN>/$BIND_DN/g" "$LDAP_CONF"
+    sed -i "s/<BIND_PASSWORD>/$BIND_PASSWORD/g" "$LDAP_CONF"
+    sed -i "s/<BASE_DN>/$BASE_DN/g" "$LDAP_CONF"
+    sed -i "s/<SEARCH_FILTER>/$SEARCH_FILTER/g" "$LDAP_CONF"
+    sed -i "s/<BIND_DN>/$BIND_DN/g" "$LDAP_CONF"
+    sed -i "s/<GROUP_DN>/$GROUP_DN/g" "$LDAP_CONF"
+    sed -i "s/<GROUP_FILTER>/$GROUP_FILTER/g" "$LDAP_CONF"
+    sed -i "s/<MEMBER_ATTR>/$MEMBER_ATTR/g" "$LDAP_CONF"
 fi
 
 if [[ "$GEN_CLIENT_CONF" == "y" ]]
@@ -64,6 +99,7 @@ then
     sed -i '/^log /d' "$FILE"
     sed -i '/^log-append /d' "$FILE"
     sed -i '/^max-clients /d' "$FILE"
+    sed -i '/^plugin /d' "$FILE"
     sed -i '/^port /d' "$FILE"
     sed -i '/^push /d' "$FILE"
     sed -i '/^route /d' "$FILE"
@@ -94,6 +130,9 @@ then
 
     echo "remote-cert-tls server" >>"$FILE"
     echo "remote $VPN_IP $PORT" >>"$FILE"
+
+    # Ask for username/password
+    echo "auth-user-pass" >>"$FILE"
 
     # using client, dont bind a specific port
     echo "nobind" >>"$FILE"
